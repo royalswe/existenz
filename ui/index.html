@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Existens 4.0</title>
+  <link rel="stylesheet" href="main.css">
+</head>
+<body>
+  <header>
+    <h1>Existens 4.0</h1>
+    <div class="toggles">
+      <label>
+        <input type="checkbox" id="dark-mode-toggle">
+        Dark Mode
+      </label>
+      <label>
+        <input type="checkbox" id="nsfw-toggle">
+        Hide NSFW Links
+      </label>
+    </div>
+  </header>
+  <main>
+    <ul id="links-list"></ul>
+  </main>
+
+  <!-- <div style="display: flex; align-items: center; position: relative;"><img src="icon/comment.gif" alt="Kommentarer"
+      style="width: 40px; height: 40px; position: absolute; z-index: 0;"><span
+      style="margin: 0 auto; color: #FFFFF; font-size: 14px; text-align: center;  margin-left: 20px; position: absolute; left: 50%; top: -2px; transform: translate(-50%, -50%); z-index: 1;">
+      <div class="d"><a target="blank" href="?p=komment&amp;id=267164">0</a></div>
+    </span>
+  </div> -->
+
+  <div id="modal" class="modal">
+    <div class="modal-content">
+      <span class="close" id="close-modal">&times;</span>
+      <div id="modal-body"></div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
