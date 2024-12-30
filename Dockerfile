@@ -14,8 +14,11 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o main .
 FROM alpine:latest
 WORKDIR /app
 
-# Copy the binary
+# Copy the binary and JSON file
 COPY --from=builder /app/main .
+COPY links.json .
+
+# Copy static UI files
 COPY ui/ ./ui
 
 # Expose the port
