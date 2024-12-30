@@ -1,6 +1,6 @@
 # Simple Makefile for a Go project
 #docker build -t go-static-app .
-#docker run -p 8080:8080 go-static-app
+#docker run -p 8081:8081 go-static-app
 #docker-compose build
 #docker-compose up
 # Build the application

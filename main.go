@@ -42,5 +42,5 @@ func main() {
 	// Serve static files from the `ui` directory
 	http.Handle("/", http.FileServer(http.Dir("ui")))
 
-	http.ListenAndServe(":8080", nil)
+	http.ListenAndServe(":8081", nil)
 }

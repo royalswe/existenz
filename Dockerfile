@@ -22,7 +22,7 @@ COPY links.json .
 COPY ui/ ./ui
 
 # Expose the port
-EXPOSE 8080
+EXPOSE 8081
 
 # Run the Go application
 CMD ["./main"]
