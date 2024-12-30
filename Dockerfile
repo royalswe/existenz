@@ -16,7 +16,7 @@ WORKDIR /app
 
 # Copy the binary and JSON file
 COPY --from=builder /app/main .
-COPY links.json .
+#COPY links.json .
 
 # Copy static UI files
 COPY ui/ ./ui
