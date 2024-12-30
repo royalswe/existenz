@@ -28,7 +28,7 @@ func Scrape() {
 	linkMap := make(map[string][]*Link)
 	var currentDate string = "Idag"
 	maxLinks := 200
-	count := 0
+	count := 10
 
 	//... scraping logic
 	c := colly.NewCollector(

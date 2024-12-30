@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-  const apiUrl = 'http://localhost:8081/links';
+  const apiUrl = '/links';
   const linksList = document.getElementById('links-list');
   const modal = document.getElementById('modal');
   const modalBody = document.getElementById('modal-body');
