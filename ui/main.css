@@ -76,7 +76,7 @@ video {
   background-color: var(--header-bg);
 }
 
-.link {
+a.link {
   flex: 1;
   display: flex;
   align-items: center;
@@ -84,6 +84,10 @@ video {
   font-size: 16px;
   padding: 1em;
   color: var(--text-color);
+}
+
+a:visited {
+  color: var(--link-color);
 }
 
 .link > img {
@@ -114,7 +118,6 @@ video {
   color: var(--text-color);
   font-size: 14px;
   font-weight: bold;
-  z-index: 1;
 }
 
 /* Additional Styles */
