@@ -13,7 +13,6 @@ import (
 )
 
 type Link struct {
-	URL           string `json:"url"`
 	Title         string `json:"title"`
 	Icon          string `json:"icon"`
 	Type          string `json:"type"`
@@ -23,12 +22,20 @@ type Link struct {
 	Nsfw          bool   `json:"nsfw"`
 }
 
+var cookies = []*http.Cookie{
+	{
+		Name:   "PHPSESSID",
+		Value:  "ffg6hiqfptcniua7f1bs138l80",
+		Domain: "existenz.se",
+	},
+}
+
 func Scrape() {
 	// initialize the map that will contain the scraped data
 	linkMap := make(map[string][]*Link)
 	var currentDate string = "Idag"
-	maxLinks := 200
-	count := 10
+	maxLinks := 1000
+	count := 0
 
 	//... scraping logic
 	c := colly.NewCollector(
@@ -37,14 +44,15 @@ func Scrape() {
 	)
 	c.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
 	// Manually set cookies
-	cookies := []*http.Cookie{
-		{
-			Name:   "PHPSESSID",
-			Value:  "ffg6hiqfptcniua7f1bs138l80",
-			Domain: "existenz.se",
-		},
-	}
-	c.SetCookies("https://existenz.se", cookies)
+
+	// Set the PHPSESSID cookie
+	c.OnRequest(func(r *colly.Request) {
+		c.SetCookies("https://existenz.se", cookies)
+
+		// for _, cookie := range cookies {
+		// 	r.Headers.Set("Cookie", fmt.Sprintf("%s=%s", cookie.Name, cookie.Value))
+		// }
+	})
 
 	// triggered when the scraper encounters an error
 	c.OnError(func(_ *colly.Response, err error) {
@@ -71,6 +79,7 @@ func Scrape() {
 
 	c.OnHTML("script", func(e *colly.HTMLElement) {
 		link := &Link{}
+		redirectSrc := false
 
 		if strings.Contains(e.Text, "videoId") {
 			videoID := strings.Split(e.Text, "videoId: '")[1]
@@ -80,19 +89,44 @@ func Scrape() {
 		} else if strings.Contains(e.Text, "function countdown()") {
 			start := strings.Index(e.Text, "top.location.href = '") + len("top.location.href = '")
 			end := strings.Index(e.Text[start:], "'") + start
-			link.Type = "redirect"
 			link.Src = e.Text[start:end]
+			link.Type = "redirect"
+
+			if strings.Contains(link.Src, "https://existenz.se/amedia/?typ=bild&url=") {
+				// link.src has two urls, keep the second one where https begins second time
+				link.Src = "https" + strings.Split(link.Src, "https")[2]
+				link.Type = "image"
+			} else if strings.Contains(link.Src, "https://snuskhummer.com") {
+				// next url is the video which will be picked up by iframe
+				redirectSrc = true
+			}
 		} else if strings.Contains(e.Text, "top.location") {
 			start := strings.Index(e.Text, "top.location = '") + len("top.location = '")
 			end := strings.Index(e.Text[start:], "'") + start
-			link.Type = "redirect"
-			link.Src = e.Text[start:end]
+			if end > start {
+				link.Src = e.Text[start:end]
+				link.Type = "redirect"
+
+				if strings.Contains(link.Src, "https://www.youtube.com/shorts/") {
+					link.Src = strings.Split(link.Src, "https://www.youtube.com/shorts/")[1]
+					link.Type = "youtube"
+				}
+			}
+
 		}
 
 		if link.Type != "" && link.Src != "" {
 			if links, exists := linkMap[currentDate]; exists && len(links) > 0 {
 				links[len(links)-1].Type = link.Type
 				links[len(links)-1].Src = link.Src
+			}
+
+			if redirectSrc {
+				absoluteURL := e.Request.AbsoluteURL(link.Src)
+				err := c.Visit(absoluteURL)
+				if err != nil {
+					log.Println("Failed to visit URL:", err)
+				}
 			}
 		}
 	})
@@ -111,7 +145,6 @@ func Scrape() {
 		link := &Link{
 			Title:         e.ChildText(".text"),
 			Icon:          e.ChildAttr("img.type", "alt"),
-			URL:           href,
 			CommentUrl:    e.ChildAttr(".comment-info a", "href"),
 			CommentNumber: e.ChildText(".comment-info a"),
 			Nsfw:          e.ChildAttr(`img[alt="18+"]`, "alt") != "",
@@ -184,4 +217,55 @@ func Scrape() {
 	})
 	// start scraping
 	c.Visit("https://existenz.se/")
+}
+
+func UpdateCommentNumbers() {
+	// Read current links.json
+
+	data, _ := os.ReadFile("links.json")
+
+	var entries []struct {
+		Date  string  `json:"date"`
+		Links []*Link `json:"links"`
+	}
+
+	json.Unmarshal(data, &entries)
+
+	// Create temporary map to store all comments
+	commentMap := make(map[string]string)
+
+	c := colly.NewCollector()
+
+	// Set the PHPSESSID cookie
+	c.OnRequest(func(r *colly.Request) {
+		c.SetCookies("https://existenz.se", cookies)
+	})
+
+	c.OnHTML(".link", func(e *colly.HTMLElement) {
+		commentNumber := e.ChildText(".comment-info a")
+		commentUrl := e.ChildAttr(".comment-info a", "href")
+		commentMap[commentUrl] = commentNumber
+	})
+
+	c.Visit("https://existenz.se")
+
+	c.Wait()
+	// Update links.json with collected comments
+	fmt.Println("Updating comment numbers...")
+	for _, entry := range entries {
+		for _, link := range entry.Links {
+			// Check if the link has a comment URL
+			if number, exists := commentMap[link.CommentUrl]; exists {
+				link.CommentNumber = number
+			}
+		}
+	}
+
+	// Write updated data back to links.json
+	file, _ := os.Create("links.json")
+	defer file.Close()
+
+	encoder := json.NewEncoder(file)
+	encoder.SetIndent("", "  ")
+	encoder.Encode(entries)
 }

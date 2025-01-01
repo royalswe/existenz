@@ -47,15 +47,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const listItem = document.createElement('li');
         listItem.className = isNSFW ? 'nsfw' : '';
+
+        const src = link.type === 'youtube' ? `https://www.youtube.com/watch?v=${link.src}` : link.src;
+
         listItem.innerHTML = `
-          <a href="#" data-type="${link.type}" data-src="${link.src}" class="link">
+          <a href="${src}" data-type="${link.type}" data-src="${link.src}" class="link">
             <img src="icons/${link.icon.toLowerCase()}.png" alt="${link.icon} icon">
             ${link.title}
             ${isNSFW ? '<span class="nsfw-icon">(NSFW)</span>' : ''}
           </a>
           ${
             link.comment_url
-              ? `<a href="#" class="comment-link" data-comment-url="${link.comment_url}">
+              ? `<a href="${link.comment_url}" class="comment-link" data-comment-url="${link.comment_url}">
                   <div class="comment-icon">
                     <span class="comment-number">${link.comment_number}</span>
                   </div>
@@ -83,21 +86,29 @@ document.addEventListener('DOMContentLoaded', () => {
     event.preventDefault();
     const { type, src } = event.target.closest('a').dataset;
 
-    if (type === 'redirect' || type === 'iframe') {
-      window.open(src, '_blank');
-    } else if (type === 'youtube') {
+  if (type === 'youtube') {
       showModal(`
         <iframe src="https://www.youtube.com/embed/${src}" frameborder="0" allowfullscreen></iframe>
       `);
-    } else if (src.endsWith('.png') || src.endsWith('.jpg') || src.endsWith('.jpeg') || src.endsWith('.gif')) {
+    }
+    else if (src.endsWith('.png') || src.endsWith('.jpg') || src.endsWith('.jpeg') || src.endsWith('.gif') || src.endsWith('.webp')) {
       showModal(`<img src="${src}" alt="Image">`);
-    } else if (src.endsWith('.mp4')) {
+    } 
+    else if (src.endsWith('.mp4')) {
       showModal(`
         <video controls>
           <source src="${src}" type="video/mp4">
           Your browser does not support the video tag.
         </video>
       `);
+    }
+    else if (type === 'iframe') {
+      showModal(`
+        <iframe src="${src}" frameborder="0"></iframe>
+      `);
+    }
+    else if (type === 'redirect' ) {
+      window.open(src, '_blank');
     }
   }
 
