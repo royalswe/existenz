@@ -47,14 +47,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const listItem = document.createElement('li');
         listItem.className = isNSFW ? 'link-item nsfw' : 'link-item';
-
         const src = link.type === 'youtube' ? `https://www.youtube.com/watch?v=${link.src}` : link.src;
+        const isRedirect = link.type === 'redirect' && !src.match(/\.(png|jpg|jpeg|gif|webp|mp4)$/);
 
         listItem.innerHTML = `
           <a href="${src}" data-type="${link.type}" data-src="${link.src}" class="link">
             <img src="icons/${link.icon.toLowerCase()}.png" alt="${link.icon} icon">
             ${link.title}
             ${isNSFW ? '<span class="nsfw-icon">(NSFW)</span>' : ''}
+            ${isRedirect ? '<img src="icons/redirect.svg" alt="Redirect icon" class="redirect-icon">' : ''}
           </a>
           ${
             link.comment_url
@@ -72,14 +73,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Add event listeners to links
     document.querySelectorAll('.link').forEach((link) => {
-        if (link.getAttribute('data-type') === 'redirect') {
-          const icon = document.createElement('img');
-          icon.src = 'icons/redirect.svg'; // Replace with your redirect icon path
-          icon.alt = 'Redirect icon';
-
-          icon.classList.add('redirect-icon'); // Add your icon class here
-          link.appendChild(icon);
-      }
       link.addEventListener('click', handleLinkClick);
     });
 
