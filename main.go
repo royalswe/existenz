@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	// run the scraper every day at 10:00
+	// run the scraper every day at 00:10
 	go func() {
 		for {
 			Scrape()
@@ -19,6 +19,7 @@ func main() {
 		}
 	}()
 
+	// update comment numbers every minute
 	go func() {
 		for {
 			UpdateCommentNumbers()

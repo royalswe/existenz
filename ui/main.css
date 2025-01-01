@@ -1,7 +1,7 @@
 :root {
   --bg-color: #121212;
-  --text-color: #ffffff;
-  --link-color: #1e90ff;
+  --text-color: #e1e1e1;
+  --link-color: #bb86fc;
   --header-bg: #1f1f1f;
 }
 
@@ -22,10 +22,10 @@ body {
 
 header {
   background: var(--header-bg);
-  padding: 10px 20px;
+  padding: 10px;
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  flex-direction: column;
 }
 
 header h1 {
@@ -43,9 +43,7 @@ ul {
 
 li {
   display: flex;
-  margin-bottom: 10px;
-  padding: 10px;
-  border: 1px solid var(--link-color);
+  margin-bottom: 5px;
   border-radius: 8px;
 }
 
@@ -79,10 +77,57 @@ iframe {
   height: calc(60vw * 0.5625); /* Assuming a 16:9 aspect ratio */
 }
 
-img,
+.links-list img,
 video {
   max-width: 100%;
   max-height: 80vh;
+}
+
+/* General styles for link items */
+.link-item {
+  margin-bottom: 10px;
+  background-color: var(--header-bg);
+}
+
+.link {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  font-size: 16px;
+  padding: 1em;
+  color: var(--text-color);
+}
+
+.link img {
+  width: 24px;
+  height: 24px;
+  margin-right: 10px;
+}
+
+/* Styles for the comment icon */
+.comment-link {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.comment-icon {
+  background-image: url("icons/comment.gif"); /* Verify this path */
+  background-size: contain; /* Ensure the image scales properly */
+  width: 50px;
+  height: 50px;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.comment-number {
+  position: absolute;
+  color: var(--text-color);
+  font-size: 14px;
+  font-weight: bold;
+  z-index: 1;
 }
 
 /* Additional Styles */
@@ -132,50 +177,6 @@ video {
   display: flex;
 }
 
-/* General styles for link items */
-.link-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 10px;
-}
-
-.link {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  text-decoration: none;
-  color: #fff;
-  font-size: 16px;
-}
-
-.link img {
-  width: 24px;
-  height: 24px;
-  margin-right: 10px;
-}
-
-/* Styles for the comment icon */
-.comment-link {
-  display: flex;
-  justify-content: flex-end;
-}
-
-.comment-icon {
-  background-image: url("icons/comment.gif"); /* Verify this path */
-  background-size: contain; /* Ensure the image scales properly */
-  width: 50px;
-  height: 50px;
-  position: relative;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.comment-number {
-  position: absolute;
-  color: var(--text-color);
-  font-size: 14px;
-  font-weight: bold;
-  z-index: 1;
+.redirect-icon {
+  margin-left: 10px;
 }
