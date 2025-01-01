@@ -6,22 +6,33 @@ document.addEventListener('DOMContentLoaded', () => {
   const closeModal = document.getElementById('close-modal');
   const darkModeToggle = document.getElementById('dark-mode-toggle');
   const nsfwToggle = document.getElementById('nsfw-toggle');
+  const widthToggle = document.getElementById('width-toggle');
+  let fetchedLinks = [];
 
   // Initial Settings
   const settings = {
     darkMode: localStorage.getItem('darkMode') === 'false' ? false : true,
     hideNSFW: localStorage.getItem('hideNSFW') === 'false' ? false : true,
+    contentWidth: localStorage.getItem('contentWidth') === null ? true : localStorage.getItem('contentWidth') === 'true' ? true : false
   };
 
   document.body.dataset.theme = settings.darkMode ? 'dark' : 'light';
   darkModeToggle.checked = settings.darkMode;
   nsfwToggle.checked = settings.hideNSFW;
+  console.log('settings.contentWidth', settings.contentWidth);
+
+  widthToggle.checked = !settings.contentWidth;
+  
+  if (settings.contentWidth === true) {
+    linksList.classList.add('content-width');
+  }
 
   // Fetch Data from API
   async function fetchLinks() {
     try {
       const response = await fetch(apiUrl);
       const data = await response.json();
+      fetchedLinks = data; // Store the fetched links
       renderLinks(data);
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -33,11 +44,11 @@ document.addEventListener('DOMContentLoaded', () => {
     linksList.innerHTML = '';
     data.forEach((entry) => {
       const { date, links } = entry;
-
+      const numOfLinks = links.length;
       // Date Header
       const dateHeader = document.createElement('li');
       dateHeader.className = 'date-header';
-      dateHeader.textContent = date;
+      dateHeader.textContent = `${date} (${numOfLinks} länkar)`;
       linksList.appendChild(dateHeader);
 
       // Links
@@ -92,8 +103,8 @@ document.addEventListener('DOMContentLoaded', () => {
         <iframe src="https://www.youtube.com/embed/${src}" frameborder="0" allowfullscreen></iframe>
       `);
     }
-    else if (src.endsWith('.png') || src.endsWith('.jpg') || src.endsWith('.jpeg') || src.endsWith('.gif') || src.endsWith('.webp')) {
-      showModal(`<img src="${src}" alt="Image">`);
+    else if (type === 'image' || src.endsWith('.png') || src.endsWith('.jpg') || src.endsWith('.jpeg') || src.endsWith('.gif') || src.endsWith('.webp')) {
+      showModal(`<a href="${src}" target="_blank"><img src="${src}" alt="Image"></a>`);
     } 
     else if (src.endsWith('.mp4')) {
       showModal(`
@@ -106,9 +117,11 @@ document.addEventListener('DOMContentLoaded', () => {
     else if (type === 'iframe') {
       showModal(`
         <iframe src="${src}" frameborder="0"></iframe>
+        <br>
+        <a href="${src}" target="_blank" class="iframe-link">Öppna i nytt fönster</a>
       `);
     }
-    else if (type === 'redirect' ) {
+    else {
       window.open(src, '_blank');
     }
   }
@@ -150,7 +163,15 @@ document.addEventListener('DOMContentLoaded', () => {
     settings.hideNSFW = event.target.checked;
     localStorage.setItem('hideNSFW', event.target.checked);
     // Rerender links with updated visibility
-    fetchLinks();
+    renderLinks(fetchedLinks);
+  });
+
+  // Width Toggle - set content width class on .links-list if enabled
+  widthToggle.addEventListener('change', (event) => {
+    console.log('event.target.checked', !event.target);
+    
+    linksList.classList.toggle('content-width', !event.target.checked);
+    localStorage.setItem('contentWidth', !event.target.checked);
   });
 
   // Initial Fetch

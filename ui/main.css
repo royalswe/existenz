@@ -9,7 +9,7 @@
   --bg-color: #ffffff;
   --text-color: #121212;
   --link-color: #007acc;
-  --header-bg: #f4f4f4;
+  --header-bg: #efefef;
 }
 
 body {
@@ -48,7 +48,7 @@ li {
 }
 
 #links-list {
-  padding: 0 5em;
+  padding: 0 1em;
 }
 
 .date-header {
@@ -57,19 +57,6 @@ li {
   margin-top: 20px;
   color: var(--link-color);
   border: none;
-}
-
-a {
-  text-decoration: none;
-  color: var(--link-color);
-  display: flex;
-  align-items: center;
-}
-
-a img {
-  margin-right: 10px;
-  width: 24px;
-  height: 24px;
 }
 
 iframe {
@@ -99,7 +86,7 @@ video {
   color: var(--text-color);
 }
 
-.link img {
+.link > img {
   width: 24px;
   height: 24px;
   margin-right: 10px;
@@ -132,7 +119,7 @@ video {
 
 /* Additional Styles */
 .nsfw {
-  background-color: rgba(255, 0, 0, 0.2);
+  background-color: rgba(255, 0, 0, 0.1);
 }
 
 .nsfw .nsfw-icon {
@@ -163,6 +150,8 @@ video {
   border-radius: 5px;
   text-align: center;
   color: black;
+  max-height: 90vh;
+  overflow-y: auto;
 }
 
 .close {
@@ -179,4 +168,9 @@ video {
 
 .redirect-icon {
   margin-left: 10px;
+}
+
+.content-width {
+  max-width: 800px;
+  margin: 0 auto;
 }
