@@ -170,7 +170,10 @@ a:visited {
 }
 
 .redirect-icon {
-  margin-left: 10px;
+  margin-left: 1em;
+  padding-right: 1em;
+  padding-top: 0.5em;
+  width: 2.5em;
 }
 
 .content-width {

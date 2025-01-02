@@ -150,14 +150,14 @@ func Scrape() {
 			Nsfw:          e.ChildAttr(`img[alt="18+"]`, "alt") != "",
 		}
 
+		if currentDate != "" {
+			linkMap[currentDate] = append(linkMap[currentDate], link)
+		}
+
 		// Check the next sibling element for the comment-date class
 		nextSibling := e.DOM.Next()
 		if nextSibling.HasClass("comment-date") {
 			currentDate = nextSibling.Text()
-		}
-
-		if currentDate != "" {
-			linkMap[currentDate] = append(linkMap[currentDate], link)
 		}
 
 		err := c.Visit(absoluteURL)

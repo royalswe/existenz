@@ -66,15 +66,15 @@ document.addEventListener('DOMContentLoaded', () => {
             <img src="icons/${link.icon.toLowerCase()}.png" alt="${link.icon} icon">
             ${link.title}
             ${isNSFW ? '<span class="nsfw-icon">(NSFW)</span>' : ''}
-            ${isRedirect ? '<img src="icons/redirect.svg" alt="Redirect icon" class="redirect-icon">' : ''}
           </a>
+          ${isRedirect ? `<a href="${src}" target="_blank"><img src="icons/redirect.svg" alt="Redirect icon" class="redirect-icon"></a>` : ''}
           ${
             link.comment_url
               ? `<a href="${link.comment_url}" class="comment-link" data-comment-url="${link.comment_url}">
-                  <div class="comment-icon">
-                    <span class="comment-number">${link.comment_number}</span>
-                  </div>
-                </a>`
+            <div class="comment-icon">
+              <span class="comment-number">${link.comment_number}</span>
+            </div>
+          </a>`
               : ''
           }
         `;
@@ -114,16 +114,16 @@ document.addEventListener('DOMContentLoaded', () => {
         </video>
       `);
     }
-    else if (type === 'iframe') {
+    else {
       showModal(`
         <iframe src="${src}" frameborder="0"></iframe>
         <br>
         <a href="${src}" target="_blank" class="iframe-link">Öppna i nytt fönster</a>
       `);
     }
-    else {
-      window.open(src, '_blank');
-    }
+    // else {
+    //   window.open(src, '_blank');
+    // }
   }
 
   // Handle Comment Link Click
