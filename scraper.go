@@ -68,10 +68,11 @@ func Scrape() {
 	url := launcher.MustLaunch()
 	fmt.Println("launch:", url)
 	browser := rod.New().ControlURL(url).MustConnect()
-	defer browser.MustClose()
 	fmt.Println("Connected to browser")
 	page := browser.MustPage("https://existenz.se/")
 	fmt.Println("Connected to https://existenz.se/")
+
+	defer browser.MustClose()
 
 	page.MustElement(`input[value="Användarnamn"]`).MustInput("royalswe")
 	page.MustElement(`input[value="Lösenord"]`).MustInput("tr0llet")
