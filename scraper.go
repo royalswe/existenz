@@ -68,6 +68,8 @@ func Scrape() {
 	url := launcher.MustLaunch()
 	fmt.Println("launch:", url)
 	browser := rod.New().ControlURL(url).MustConnect()
+	//browser := rod.New().MustConnect()
+
 	fmt.Println("Connected to browser")
 	page := browser.MustPage("https://existenz.se/")
 	fmt.Println("Connected to https://existenz.se/")
