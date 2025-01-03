@@ -5,12 +5,23 @@ go 1.23.3
 require github.com/imroc/req/v3 v3.49.1
 
 require (
+	github.com/chromedp/sysutil v1.1.0 // indirect
+	github.com/gobwas/httphead v0.1.0 // indirect
+	github.com/gobwas/pool v0.2.1 // indirect
+	github.com/gobwas/ws v1.4.0 // indirect
+	github.com/josharian/intern v1.0.0 // indirect
+	github.com/mailru/easyjson v0.7.7 // indirect
+)
+
+require (
 	github.com/PuerkitoBio/goquery v1.10.0 // indirect
 	github.com/andybalholm/brotli v1.1.1 // indirect
 	github.com/andybalholm/cascadia v1.3.2 // indirect
 	github.com/antchfx/htmlquery v1.3.4 // indirect
 	github.com/antchfx/xmlquery v1.4.3 // indirect
 	github.com/antchfx/xpath v1.3.3 // indirect
+	github.com/chromedp/cdproto v0.0.0-20250101192427-60a0ca35cb84
+	github.com/chromedp/chromedp v0.11.2
 	github.com/cloudflare/circl v1.5.0 // indirect
 	github.com/go-rod/rod v0.116.2 // indirect
 	github.com/go-task/slim-sprig/v3 v3.0.0 // indirect

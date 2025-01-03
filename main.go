@@ -20,12 +20,12 @@ func main() {
 	}()
 
 	// update comment numbers every minute
-	go func() {
-		for {
-			time.Sleep(10 * time.Minute)
-			UpdateCommentNumbers()
-		}
-	}()
+	// go func() {
+	// 	for {
+	// 		time.Sleep(10 * time.Minute)
+	// 		UpdateCommentNumbers()
+	// 	}
+	// }()
 
 	http.HandleFunc("GET /links", func(w http.ResponseWriter, r *http.Request) {
 		// Set CORS headers
