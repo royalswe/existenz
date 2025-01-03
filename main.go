@@ -23,7 +23,7 @@ func main() {
 	go func() {
 		for {
 			UpdateCommentNumbers()
-			time.Sleep(1 * time.Minute)
+			time.Sleep(10 * time.Minute)
 		}
 	}()
 
