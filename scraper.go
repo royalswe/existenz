@@ -25,7 +25,7 @@ type Link struct {
 	Nsfw          bool   `json:"nsfw"`
 }
 
-var cookies = []*http.Cookie{
+var userCookies = []*http.Cookie{
 	{
 		Name:   "PHPSESSID",
 		Value:  "ffg6hiqfptcniua7f1bs138l80",
@@ -66,11 +66,12 @@ func getCookiesFromRod() ([]*http.Cookie, error) {
 }
 
 func Scrape() {
-	cookie, err := getCookiesFromRod()
+	fmt.Println("Run scrape function...")
+	rodCookie, err := getCookiesFromRod()
 	if err != nil {
 		log.Fatalf("Failed to get cookies from Rod: %v", err)
 	}
-
+	fmt.Println("Rod Cookies:", rodCookie)
 	// initialize the map that will contain the scraped data
 	linkMap := make(map[string][]*Link)
 	var currentDate string = "Idag"
@@ -89,7 +90,8 @@ func Scrape() {
 		// r.Headers.Set("User-Agent", fakeChrome.Headers.Get("user-agent"))
 		// r.Headers.Set("Referer", "https://existenz.se/")
 		// r.Headers.Set("Origin", "https://existenz.se")
-		c.SetCookies("https://existenz.se", cookie)
+		c.SetCookies("https://existenz.se", rodCookie)
+		c.SetCookies("https://existenz.se", userCookies)
 	})
 
 	// triggered when the scraper encounters an error
@@ -252,6 +254,7 @@ func Scrape() {
 		if err := encoder.Encode(orderedEntries); err != nil {
 			log.Fatalln("Failed to write JSON data to file", err)
 		}
+		log.Println("Scraping completed. Links saved to links.json", len(linkMap))
 	})
 	// start scraping
 	c.Visit("https://existenz.se/")
@@ -276,7 +279,7 @@ func UpdateCommentNumbers() {
 
 	// Set the PHPSESSID cookie
 	c.OnRequest(func(r *colly.Request) {
-		c.SetCookies("https://existenz.se", cookies)
+		c.SetCookies("https://existenz.se", userCookies)
 	})
 
 	c.OnHTML(".link", func(e *colly.HTMLElement) {
@@ -287,7 +290,6 @@ func UpdateCommentNumbers() {
 
 	c.Visit("https://existenz.se")
 
-	c.Wait()
 	// Update links.json with collected comments
 	fmt.Println("Updating comment numbers...")
 	for _, entry := range entries {
