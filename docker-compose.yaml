@@ -8,3 +8,6 @@ services:
     volumes:
       - ./ui:/app/ui
       - ./links.json:/app/links.json
+    environment:
+      - CHROME_BIN=/usr/bin/chromium-browser
+      - CHROME_PATH=/usr/lib/chromium/
