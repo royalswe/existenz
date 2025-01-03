@@ -71,8 +71,11 @@ func Scrape() {
 	//browser := rod.New().MustConnect()
 
 	fmt.Println("Connected to browser")
-	page := browser.MustPage("https://existenz.se/")
-	fmt.Println("Connected to https://existenz.se/")
+	page := browser.MustPage("https://openweathermap.org/")
+	fmt.Println("Connected to https://openweathermap.org/")
+
+	otext := page.MustElement(".orange-text").MustText()
+	fmt.Println("Orange text:", otext)
 
 	defer browser.MustClose()
 
