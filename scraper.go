@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/gocolly/colly"
+	"github.com/imroc/req/v3"
 )
 
 type Link struct {
@@ -31,22 +32,23 @@ var cookies = []*http.Cookie{
 }
 
 func Scrape() {
+	fakeChrome := req.DefaultClient().ImpersonateChrome()
 	// initialize the map that will contain the scraped data
 	linkMap := make(map[string][]*Link)
 	var currentDate string = "Idag"
-	maxLinks := 1000
+	maxLinks := 100
 	count := 0
 
 	//... scraping logic
 	c := colly.NewCollector(
 		colly.AllowURLRevisit(),
 		colly.AllowedDomains(),
+		colly.UserAgent(fakeChrome.Headers.Get("user-agent")),
 	)
-	//c.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
-	// Manually set cookies
 
 	// Set the PHPSESSID cookie
 	c.OnRequest(func(r *colly.Request) {
+		r.Headers.Set("Accept", "*/*")
 		c.SetCookies("https://existenz.se", cookies)
 
 		// for _, cookie := range cookies {
@@ -55,8 +57,8 @@ func Scrape() {
 	})
 
 	// triggered when the scraper encounters an error
-	c.OnError(func(_ *colly.Response, err error) {
-		fmt.Println("Something went wrong: ", err)
+	c.OnError(func(r *colly.Response, err error) {
+		log.Println("OnError: ", r.Request.URL, err)
 	})
 
 	c.OnHTML("body iframe", func(e *colly.HTMLElement) {
