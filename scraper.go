@@ -39,16 +39,19 @@ func getCookiesFromRod() ([]*http.Cookie, error) {
 	url := launcher.MustLaunch()
 
 	browser := rod.New().ControlURL(url).MustConnect()
+	fmt.Println("Connected to Rod")
 	defer browser.MustClose()
 
 	page := browser.MustPage("https://existenz.se/")
+	fmt.Println("Opened page")
 	page.MustWaitLoad()
+	fmt.Println("Page loaded")
 
 	// Wait for the Cloudflare challenge to pass
-	time.Sleep(10 * time.Second)
-
+	time.Sleep(5 * time.Second)
+	fmt.Println("sleeped")
 	cookies := page.MustCookies()
-
+	fmt.Println("Cookies:", cookies)
 	var httpCookies []*http.Cookie
 	for _, cookie := range cookies {
 		httpCookies = append(httpCookies, &http.Cookie{
