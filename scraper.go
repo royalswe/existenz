@@ -66,17 +66,20 @@ func Scrape() {
 	fmt.Println("Run scrape function...")
 	launcher := launcher.New().Bin("/usr/bin/chromium-browser").Headless(true)
 	url := launcher.MustLaunch()
-
+	fmt.Println("launch:", url)
 	browser := rod.New().ControlURL(url).MustConnect()
 	defer browser.MustClose()
-
-	page := browser.MustPage("https://www.existenz.se/")
+	fmt.Println("Connected to browser")
+	page := browser.MustPage("https://existenz.se/")
+	fmt.Println("Connected to https://existenz.se/")
 
 	page.MustElement(`input[value="Användarnamn"]`).MustInput("royalswe")
 	page.MustElement(`input[value="Lösenord"]`).MustInput("tr0llet")
 	page.MustElement(`input[type="submit"]`).MustClick()
 	page.MustWaitLoad()
 	page.MustElement(".user-menu")
+
+	fmt.Println("Logged in")
 	// check if cookie is set
 	linkMap := make(map[string][]*Link)
 	var currentDate string = "Idag"
