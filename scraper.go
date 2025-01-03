@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/go-rod/rod"
+	"github.com/go-rod/rod/lib/launcher"
 	"github.com/gocolly/colly"
 )
 
@@ -33,7 +34,11 @@ var cookies = []*http.Cookie{
 }
 
 func getCookiesFromRod() ([]*http.Cookie, error) {
-	browser := rod.New().MustConnect()
+	// Specify the path to the Chromium binary
+	launcher := launcher.New().Bin("/usr/bin/chromium-browser").Headless(true)
+	url := launcher.MustLaunch()
+
+	browser := rod.New().ControlURL(url).MustConnect()
 	defer browser.MustClose()
 
 	page := browser.MustPage("https://existenz.se/")
