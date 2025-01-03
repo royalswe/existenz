@@ -22,8 +22,8 @@ func main() {
 	// update comment numbers every minute
 	go func() {
 		for {
-			UpdateCommentNumbers()
 			time.Sleep(10 * time.Minute)
+			UpdateCommentNumbers()
 		}
 	}()
 

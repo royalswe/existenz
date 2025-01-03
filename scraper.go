@@ -8,9 +8,10 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"time"
 
+	"github.com/go-rod/rod"
 	"github.com/gocolly/colly"
-	"github.com/imroc/req/v3"
 )
 
 type Link struct {
@@ -31,29 +32,59 @@ var cookies = []*http.Cookie{
 	},
 }
 
+func getCookiesFromRod() ([]*http.Cookie, error) {
+	browser := rod.New().MustConnect()
+	defer browser.MustClose()
+
+	page := browser.MustPage("https://existenz.se/")
+	page.MustWaitLoad()
+
+	// Wait for the Cloudflare challenge to pass
+	time.Sleep(10 * time.Second)
+
+	cookies := page.MustCookies()
+
+	var httpCookies []*http.Cookie
+	for _, cookie := range cookies {
+		httpCookies = append(httpCookies, &http.Cookie{
+			Name:     cookie.Name,
+			Value:    cookie.Value,
+			Domain:   cookie.Domain,
+			Path:     cookie.Path,
+			Expires:  time.Unix(int64(cookie.Expires), 0),
+			HttpOnly: cookie.HTTPOnly,
+			Secure:   cookie.Secure,
+		})
+	}
+
+	return httpCookies, nil
+}
+
 func Scrape() {
-	fakeChrome := req.DefaultClient().ImpersonateChrome()
+	cookie, err := getCookiesFromRod()
+	if err != nil {
+		log.Fatalf("Failed to get cookies from Rod: %v", err)
+	}
+
 	// initialize the map that will contain the scraped data
 	linkMap := make(map[string][]*Link)
 	var currentDate string = "Idag"
-	maxLinks := 100
+	maxLinks := 10
 	count := 0
 
 	//... scraping logic
 	c := colly.NewCollector(
 		colly.AllowURLRevisit(),
 		colly.AllowedDomains(),
-		colly.UserAgent(fakeChrome.Headers.Get("user-agent")),
 	)
 
 	// Set the PHPSESSID cookie
 	c.OnRequest(func(r *colly.Request) {
 		r.Headers.Set("Accept", "*/*")
-		c.SetCookies("https://existenz.se", cookies)
-
-		// for _, cookie := range cookies {
-		// 	r.Headers.Set("Cookie", fmt.Sprintf("%s=%s", cookie.Name, cookie.Value))
-		// }
+		// r.Headers.Set("User-Agent", fakeChrome.Headers.Get("user-agent"))
+		// r.Headers.Set("Referer", "https://existenz.se/")
+		// r.Headers.Set("Origin", "https://existenz.se")
+		c.SetCookies("https://existenz.se", cookie)
 	})
 
 	// triggered when the scraper encounters an error
