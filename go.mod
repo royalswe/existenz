@@ -24,6 +24,7 @@ require (
 	github.com/chromedp/chromedp v0.11.2
 	github.com/cloudflare/circl v1.5.0 // indirect
 	github.com/go-rod/rod v0.116.2 // indirect
+	github.com/go-rod/stealth v0.4.9
 	github.com/go-task/slim-sprig/v3 v3.0.0 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/gocolly/colly v1.2.0 // indirect
