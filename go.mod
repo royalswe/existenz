@@ -2,6 +2,8 @@ module existenz
 
 go 1.23.3
 
+require github.com/gocolly/colly/v2 v2.1.0
+
 require github.com/stretchr/testify v1.9.0 // indirect
 
 require (
@@ -11,7 +13,6 @@ require (
 	github.com/antchfx/xmlquery v1.4.3 // indirect
 	github.com/antchfx/xpath v1.3.3 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
-	github.com/gocolly/colly v1.2.0
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/kennygrant/sanitize v1.2.4 // indirect

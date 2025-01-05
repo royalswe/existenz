@@ -9,7 +9,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/gocolly/colly"
+	"github.com/gocolly/colly/v2"
 )
 
 type Link struct {
@@ -34,7 +34,7 @@ func Scrape() {
 	// initialize the map that will contain the scraped data
 	linkMap := make(map[string][]*Link)
 	var currentDate string = "Idag"
-	maxLinks := 1000
+	maxLinks := 5
 	count := 0
 
 	//... scraping logic
@@ -42,8 +42,15 @@ func Scrape() {
 		colly.AllowURLRevisit(),
 		colly.AllowedDomains(),
 	)
-	c.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
-	// Manually set cookies
+	//c.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
+	// set proxy with colly
+
+	// Rotate two socks5 proxies
+	// rp, err := proxy.RoundRobinProxySwitcher("socks5://127.0.0.1:9050", "socks5://127.0.0.1:9051")
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// c.SetProxyFunc(rp)
 
 	// Set the PHPSESSID cookie
 	c.OnRequest(func(r *colly.Request) {
