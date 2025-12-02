@@ -1,13 +1,16 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/gocolly/colly/v2"
 )
@@ -22,19 +25,99 @@ type Link struct {
 	Nsfw          bool   `json:"nsfw"`
 }
 
-var cookies = []*http.Cookie{
-	{
-		Name:   "PHPSESSID",
-		Value:  "n356pvvmqb17ajf2249g1rrak3",
-		Domain: "existenz.se",
-	},
+// Structs for FlareSolverr
+type FlareSolverrRequest struct {
+	Cmd        string `json:"cmd"`
+	URL        string `json:"url"`
+	MaxTimeout int    `json:"maxTimeout"`
+}
+
+type FlareSolverrResponse struct {
+	Solution FlareSolverrSolution `json:"solution"`
+	Status   string               `json:"status"`
+	Message  string               `json:"message"`
+}
+
+type FlareSolverrSolution struct {
+	URL       string               `json:"url"`
+	Status    int                  `json:"status"`
+	Cookies   []FlareSolverrCookie `json:"cookies"`
+	UserAgent string               `json:"userAgent"`
+	Response  string               `json:"response"`
+}
+
+type FlareSolverrCookie struct {
+	Name    string  `json:"name"`
+	Value   string  `json:"value"`
+	Domain  string  `json:"domain"`
+	Path    string  `json:"path"`
+	Expires float64 `json:"expires"`
+	Size    int     `json:"size"`
+	Http    bool    `json:"httpOnly"`
+	Secure  bool    `json:"secure"`
+	Session bool    `json:"session"`
+}
+
+func getCloudflareCookies() (string, []*http.Cookie, error) {
+	fmt.Println("Getting cookies from FlareSolverr...")
+	reqBody := FlareSolverrRequest{
+		Cmd:        "request.get",
+		URL:        "https://existenz.se/",
+		MaxTimeout: 60000,
+	}
+
+	jsonData, err := json.Marshal(reqBody)
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to marshal flaresolverr request: %w", err)
+	}
+
+	resp, err := http.Post("http://flaresolverr:8191/v1", "application/json", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to send request to flaresolverr: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to read flaresolverr response body: %w", err)
+	}
+
+	var flaresolverrResponse FlareSolverrResponse
+	if err := json.Unmarshal(body, &flaresolverrResponse); err != nil {
+		return "", nil, fmt.Errorf("failed to unmarshal flaresolverr response: %w", err)
+	}
+
+	if flaresolverrResponse.Status != "ok" {
+		return "", nil, fmt.Errorf("flaresolverr returned an error: %s", flaresolverrResponse.Message)
+	}
+
+	var cookies []*http.Cookie
+	for _, cookie := range flaresolverrResponse.Solution.Cookies {
+		cookies = append(cookies, &http.Cookie{
+			Name:     cookie.Name,
+			Value:    cookie.Value,
+			Domain:   cookie.Domain,
+			Path:     cookie.Path,
+			Expires:  time.Unix(int64(cookie.Expires), 0),
+			HttpOnly: cookie.Http,
+			Secure:   cookie.Secure,
+		})
+	}
+
+	fmt.Println("Successfully got cookies from FlareSolverr")
+	return flaresolverrResponse.Solution.UserAgent, cookies, nil
 }
 
 func Scrape() {
+	userAgent, cookies, err := getCloudflareCookies()
+	if err != nil {
+		log.Printf("Failed to get Cloudflare cookies: %v. Using old method.", err)
+	}
+
 	// initialize the map that will contain the scraped data
 	linkMap := make(map[string][]*Link)
 	var currentDate string = "Idag"
-	maxLinks := 5
+	maxLinks := 100
 	count := 0
 
 	//... scraping logic
@@ -42,24 +125,11 @@ func Scrape() {
 		colly.AllowURLRevisit(),
 		colly.AllowedDomains(),
 	)
-	//c.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
-	// set proxy with colly
 
-	// Rotate two socks5 proxies
-	// rp, err := proxy.RoundRobinProxySwitcher("socks5://127.0.0.1:9050", "socks5://127.0.0.1:9051")
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// c.SetProxyFunc(rp)
-
-	// Set the PHPSESSID cookie
-	c.OnRequest(func(r *colly.Request) {
+	if userAgent != "" && len(cookies) > 0 {
+		c.UserAgent = userAgent
 		c.SetCookies("https://existenz.se", cookies)
-
-		// for _, cookie := range cookies {
-		// 	r.Headers.Set("Cookie", fmt.Sprintf("%s=%s", cookie.Name, cookie.Value))
-		// }
-	})
+	}
 
 	// triggered when the scraper encounters an error
 	c.OnError(func(_ *colly.Response, err error) {
@@ -243,10 +313,15 @@ func UpdateCommentNumbers() {
 
 	c := colly.NewCollector()
 
-	// Set the PHPSESSID cookie
-	c.OnRequest(func(r *colly.Request) {
+	userAgent, cookies, err := getCloudflareCookies()
+	if err != nil {
+		log.Printf("Failed to get Cloudflare cookies: %v. Using old method.", err)
+	}
+
+	if userAgent != "" && len(cookies) > 0 {
+		c.UserAgent = userAgent
 		c.SetCookies("https://existenz.se", cookies)
-	})
+	}
 
 	c.OnHTML(".link", func(e *colly.HTMLElement) {
 		commentNumber := e.ChildText(".comment-info a")

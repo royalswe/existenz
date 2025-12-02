@@ -1,13 +1,28 @@
-version: '3.9'
-
 services:
   app:
     build: .
     ports:
-      - "8081:8081"
+      - "8081:8181"
     volumes:
       - ./ui:/app/ui
       - ./links.json:/app/links.json
     environment:
-      CHROME_BIN: /usr/bin/chromium-browser
-      CHROME_PATH: /usr/lib/chromium/
+      - CHROME_BIN=/usr/bin/chromium-browser
+      - CHROME_PATH=/usr/lib/chromium/
+    depends_on:
+      flaresolverr:
+        condition: service_healthy
+
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    container_name: flaresolverr
+    environment:
+      - LOG_LEVEL=info
+    ports:
+      - "8191:8191"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8191/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
