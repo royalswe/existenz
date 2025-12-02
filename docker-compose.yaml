@@ -13,11 +13,10 @@ services:
       flaresolverr:
         condition: service_healthy
     networks:
-      - default
+      - dokploy-network
 
   flaresolverr:
     image: ghcr.io/flaresolverr/flaresolverr:latest
-    container_name: flaresolverr
     environment:
       - LOG_LEVEL=info
     ports:
@@ -29,8 +28,8 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - default
+      - dokploy-network
 
 networks:
-  default:
-    driver: bridge
+  dokploy-network:
+    external: true
