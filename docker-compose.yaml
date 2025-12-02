@@ -2,7 +2,7 @@ services:
   app:
     build: .
     ports:
-      - "8081:8181"
+      - "8081:8081"
     volumes:
       - ./ui:/app/ui
       - ./links.json:/app/links.json
@@ -12,6 +12,8 @@ services:
     depends_on:
       flaresolverr:
         condition: service_healthy
+    networks:
+      - default
 
   flaresolverr:
     image: ghcr.io/flaresolverr/flaresolverr:latest
@@ -26,3 +28,9 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - default
+
+networks:
+  default:
+    driver: bridge
