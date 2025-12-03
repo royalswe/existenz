@@ -250,7 +250,7 @@ func Scrape() {
 		}
 	})
 
-	c.Visit("file:///app/tmp/existenz.html")
+	c.Visit("file:///tmp/existenz.html")
 }
 
 func UpdateCommentNumbers() {
@@ -298,7 +298,7 @@ func UpdateCommentNumbers() {
 		commentMap[commentUrl] = commentNumber
 	})
 
-	c.Visit("file:///app/tmp/comments.html")
+	c.Visit("file:///tmp/comments.html")
 
 	c.Wait()
 	fmt.Println("Updating comment numbers...")
