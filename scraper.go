@@ -82,128 +82,156 @@ func getSiteHTML() (string, error) {
 }
 
 func Scrape() {
-	htmlContent, err := getSiteHTML()
-	if err != nil {
-		log.Printf("Failed to get site HTML: %v.", err)
-		return
-	}
-
-	// Write HTML to a temporary file
-	tmpFile, err := os.Create("tmp/existenz.html")
-	if err != nil {
-		log.Printf("Failed to create temporary file: %v", err)
-		return
-	}
-	defer os.Remove(tmpFile.Name())
-
-	_, err = tmpFile.WriteString(htmlContent)
-	if err != nil {
-		log.Printf("Failed to write to temporary file: %v", err)
-		return
-	}
-	tmpFile.Close()
-
 	// initialize the map that will contain the scraped data
 	linkMap := make(map[string][]*Link)
 	var currentDate string = "Idag"
 	maxLinks := 100
 	count := 0
+	
+	// Temporary store for links that need their redirect URLs followed
+	tempLinkStore := make(map[string]*Link)
 
-	// Colly collector with file transport
-	t := &http.Transport{}
-	t.RegisterProtocol("file", http.NewFileTransport(http.Dir("/app")))
+	// Colly collector
 	c := colly.NewCollector(
 		colly.AllowURLRevisit(),
+		colly.MaxDepth(2), // We need to go one level deeper to follow redirects
 	)
-	c.WithTransport(t)
+	
+	// Set the User-Agent to mimic a real browser
+	c.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36"
 
 	// triggered when the scraper encounters an error
-	c.OnError(func(_ *colly.Response, err error) {
-		fmt.Println("Something went wrong: ", err)
+	c.OnError(func(r *colly.Response, err error) {
+		fmt.Printf("Something went wrong on %s: %v\n", r.Request.URL.String(), err)
 	})
+	
+	// ... (rest of the code will be modified in subsequent steps)
 
-	c.OnHTML("body iframe", func(e *colly.HTMLElement) {
-		src := e.Attr("src")
-		if src == "" {
-			return
-		}
-		if links, exists := linkMap[currentDate]; exists && len(links) > 0 {
-			link := links[len(links)-1]
-			link.Type = "iframe"
-			link.Src = src
-		}
-		if strings.Contains(src, "https://funfunfun.se") {
-			// Visiting external links might not work as expected with file transport
-			// log.Println("Skipping external visit in file mode:", src)
-		}
-	})
-
-	c.OnHTML("script", func(e *colly.HTMLElement) {
-		link := &Link{}
-
-		if strings.Contains(e.Text, "videoId") {
-			videoID := strings.Split(e.Text, "videoId: '")[1]
-			videoID = strings.Split(videoID, "',")[0]
-			link.Type = "youtube"
-			link.Src = videoID
-		} else if strings.Contains(e.Text, "function countdown()") {
-			start := strings.Index(e.Text, "top.location.href = '") + len("top.location.href = '")
-			end := strings.Index(e.Text[start:], "'") + start
-			link.Src = e.Text[start:end]
-			link.Type = "redirect"
-
-			if strings.Contains(link.Src, "https://existenz.se/amedia/?typ=bild&url=") {
-				link.Src = "https" + strings.Split(link.Src, "https")[2]
-				link.Type = "image"
-			}
-		} else if strings.Contains(e.Text, "top.location") {
-			start := strings.Index(e.Text, "top.location = '") + len("top.location = '")
-			end := strings.Index(e.Text[start:], "'") + start
-			if end > start {
-				link.Src = e.Text[start:end]
-				link.Type = "redirect"
-
-				if strings.Contains(link.Src, "https://www.youtube.com/shorts/") {
-					link.Src = strings.Split(link.Src, "https://www.youtube.com/shorts/")[1]
-					link.Type = "youtube"
-				}
-			}
-		}
-
-		if link.Type != "" && link.Src != "" {
-			if links, exists := linkMap[currentDate]; exists && len(links) > 0 {
-				links[len(links)-1].Type = link.Type
-				links[len(links)-1].Src = link.Src
-			}
-		}
-	})
-
-	// triggered when a CSS selector matches an element
 	c.OnHTML(".link", func(e *colly.HTMLElement) {
 		if count >= maxLinks {
 			return
 		}
-		count++
 
 		link := &Link{
 			Title:         e.ChildText(".text"),
-			Icon:          e.ChildAttr("img.type", "alt"),
+			Icon:          e.ChildAttr("img.type", "alt"), // Preserve original icon name
 			CommentUrl:    e.ChildAttr(".comment-info a", "href"),
 			CommentNumber: e.ChildText(".comment-info a"),
 			Nsfw:          e.ChildAttr(`img[alt="18+"]`, "alt") != "",
 		}
 
+		// Determine initial type based on icon
+		switch link.Icon {
+		case "Film":
+			link.Type = "video"
+		case "Bild":
+			link.Type = "image"
+		case "Hemsida":
+			link.Type = "website"
+		case "Ljud":
+			link.Type = "audio"
+		case "Spel":
+			link.Type = "game"
+		default:
+			link.Type = "unknown"
+		}
+
+		// Get the redirection URL from the <a> tag inside the .link div
+		redirectionUrl := e.ChildAttr("a", "href")
+		if redirectionUrl == "" {
+			return // Skip if no redirection URL found
+		}
+
+		// Make the redirection URL absolute
+		absoluteRedirectionUrl := e.Request.AbsoluteURL(redirectionUrl)
+
+		// Store the link in tempLinkStore, keyed by its absolute redirection URL
+		tempLinkStore[absoluteRedirectionUrl] = link
+
+		// Add to the main linkMap (will be fully populated after redirect)
 		if currentDate != "" {
 			linkMap[currentDate] = append(linkMap[currentDate], link)
 		}
+		count++
 
-		nextSibling := e.DOM.Next()
-		if nextSibling.HasClass("comment-date") {
-			currentDate = nextSibling.Text()
+		// Visit the redirection URL to get the final content URL
+		e.Request.Visit(absoluteRedirectionUrl)
+	})
+
+	// This handler processes the redirected pages to extract the final content URL
+	c.OnHTML("html", func(e *colly.HTMLElement) {
+		requestURL := e.Request.URL.String()
+
+		// Only process if this URL is one we are tracking in tempLinkStore
+		if link, exists := tempLinkStore[requestURL]; exists {
+			// Look for an iframe containing the content
+			e.ForEach("iframe", func(_ int, el *colly.HTMLElement) {
+				src := el.Attr("src")
+				if src != "" && link.Src == "" { // Only set if not already set by a previous iframe
+					link.Src = src
+					// Refine type based on src content if needed
+					if strings.Contains(src, "youtube.com/embed/") || strings.Contains(src, "youtube.com/watch?v=") {
+						link.Type = "youtube"
+					} else if strings.Contains(src, "player.vimeo.com/video/") {
+						link.Type = "video"
+					} else {
+						link.Type = "iframe" // Default to iframe type if found
+					}
+				}
+			})
+
+			// Look for scripts that might contain video IDs or redirect URLs
+			e.ForEach("script", func(_ int, el *colly.HTMLElement) {
+				scriptText := el.Text
+				if link.Src == "" { // Only process if src is not already found by an iframe
+					if strings.Contains(scriptText, "videoId") {
+						parts := strings.Split(scriptText, "videoId: '")
+						if len(parts) > 1 {
+							videoIDParts := strings.Split(parts[1], "',")
+							if len(videoIDParts) > 0 {
+								link.Type = "youtube"
+								link.Src = videoIDParts[0]
+							}
+						}
+					} else if strings.Contains(scriptText, "function countdown()") {
+						parts := strings.Split(scriptText, "top.location.href = '")
+						if len(parts) > 1 {
+							urlParts := strings.Split(parts[1], "'")
+							if len(urlParts) > 0 {
+								link.Src = urlParts[0]
+								link.Type = "redirect"
+								if strings.Contains(link.Src, "https://existenz.se/amedia/?typ=bild&url=") {
+									urlParts2 := strings.Split(link.Src, "https")
+									if len(urlParts2) > 2 {
+										link.Src = "https" + urlParts2[2]
+										link.Type = "image"
+									}
+								}
+							}
+						}
+					} else if strings.Contains(scriptText, "top.location") {
+						parts := strings.Split(scriptText, "top.location = '")
+						if len(parts) > 1 {
+							urlParts := strings.Split(parts[1], "'")
+							if len(urlParts) > 0 {
+								link.Src = urlParts[0]
+								link.Type = "redirect"
+								if strings.Contains(link.Src, "https://www.youtube.com/shorts/") {
+									urlParts2 := strings.Split(link.Src, "https://www.youtube.com/shorts/")
+									if len(urlParts2) > 1 {
+										link.Src = urlParts2[1]
+										link.Type = "youtube"
+									}
+								}
+							}
+						}
+					}
+				}
+			})
 		}
 	})
 
-	// triggered when a CSS selector matches a comment date element
+	// This handler is for initializing the map for a new date.
 	c.OnHTML(".comment-date", func(e *colly.HTMLElement) {
 		currentDate = e.Text
 		if _, exists := linkMap[currentDate]; !exists {
@@ -250,7 +278,7 @@ func Scrape() {
 		}
 	})
 
-	c.Visit("file:///tmp/existenz.html")
+	c.Visit("https://existenz.se/")
 }
 
 func UpdateCommentNumbers() {
