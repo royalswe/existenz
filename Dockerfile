@@ -36,6 +36,9 @@ ENV CHROME_PATH=/usr/lib/chromium/
 # Copy the built binary
 COPY --from=builder /app/main .
 
+# Create a temporary directory
+RUN mkdir tmp
+
 # Copy the JSON file and static UI files
 COPY links.json .
 COPY ui/ ./ui
