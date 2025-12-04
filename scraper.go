@@ -10,6 +10,7 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/gocolly/colly/v2"
 )
@@ -38,47 +39,71 @@ type FlareSolverrResponse struct {
 }
 
 type FlareSolverrSolution struct {
-	URL       string `json:"url"`
-	Status    int    `json:"status"`
-	UserAgent string `json:"userAgent"`
-	Response  string `json:"response"`
+	URL       string            `json:"url"`
+	Status    int               `json:"status"`
+	Headers   map[string]string `json:"headers"`
+	Response  string            `json:"response"`
+	Cookies   []any             `json:"cookies"`
+	UserAgent string            `json:"userAgent"`
 }
 
-func getSiteHTML() (string, error) {
-	fmt.Println("Getting site HTML from FlareSolverr...")
-	reqBody := FlareSolverrRequest{
-		Cmd:        "request.get",
-		URL:        "https://existenz.se/",
+// FlareSolverrTransport implements http.RoundTripper to proxy requests through FlareSolverr
+type FlareSolverrTransport struct{}
+
+func (t *FlareSolverrTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	fmt.Printf("FlareSolverr: attempting to proxy request for %s\n", req.URL.String())
+
+	// 1. Create FlareSolverr request payload
+	fsReq := FlareSolverrRequest{
+		Cmd:        "request." + strings.ToLower(req.Method),
+		URL:        req.URL.String(),
 		MaxTimeout: 60000,
 	}
 
-	jsonData, err := json.Marshal(reqBody)
+	jsonData, err := json.Marshal(fsReq)
 	if err != nil {
-		return "", fmt.Errorf("failed to marshal flaresolverr request: %w", err)
+		return nil, fmt.Errorf("failed to marshal flaresolverr request: %w", err)
 	}
 
-	resp, err := http.Post("http://flaresolverr:8191/v1", "application/json", bytes.NewBuffer(jsonData))
+	// 2. Send request to FlareSolverr
+	fsResp, err := http.Post("http://flaresolverr:8191/v1", "application/json", bytes.NewBuffer(jsonData))
 	if err != nil {
-		return "", fmt.Errorf("failed to send request to flaresolverr: %w", err)
+		return nil, fmt.Errorf("failed to send request to flaresolverr: %w", err)
 	}
-	defer resp.Body.Close()
+	defer fsResp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
+	fsBody, err := io.ReadAll(fsResp.Body)
 	if err != nil {
-		return "", fmt.Errorf("failed to read flaresolverr response body: %w", err)
+		return nil, fmt.Errorf("failed to read flaresolverr response body: %w", err)
 	}
 
 	var flaresolverrResponse FlareSolverrResponse
-	if err := json.Unmarshal(body, &flaresolverrResponse); err != nil {
-		return "", fmt.Errorf("failed to unmarshal flaresolverr response: %w", err)
+	if err := json.Unmarshal(fsBody, &flaresolverrResponse); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal flaresolverr response: %s", string(fsBody))
 	}
 
 	if flaresolverrResponse.Status != "ok" {
-		return "", fmt.Errorf("flaresolverr returned an error: %s", flaresolverrResponse.Message)
+		return nil, fmt.Errorf("flaresolverr error for URL %s: %s", req.URL.String(), flaresolverrResponse.Message)
+	}
+	fmt.Printf("FlareSolverr: successfully got response for %s\n", req.URL.String())
+
+	// 3. Create a valid http.Response from the FlareSolverr solution
+	solution := flaresolverrResponse.Solution
+	resp := &http.Response{
+		StatusCode: solution.Status,
+		Header:     make(http.Header),
+		Body:       io.NopCloser(strings.NewReader(solution.Response)),
+		Request:    req,
 	}
 
-	fmt.Println("Successfully got site HTML from FlareSolverr")
-	return flaresolverrResponse.Solution.Response, nil
+	// It's important to set the Content-Type header for Colly to process the response correctly
+	contentType := solution.Headers["content-type"]
+	if contentType == "" {
+		contentType = "text/html; charset=utf-8" // Default to HTML
+	}
+	resp.Header.Set("Content-Type", contentType)
+
+	return resp, nil
 }
 
 func Scrape() {
@@ -87,25 +112,31 @@ func Scrape() {
 	var currentDate string = "Idag"
 	maxLinks := 100
 	count := 0
-	
+
 	// Temporary store for links that need their redirect URLs followed
 	tempLinkStore := make(map[string]*Link)
+	var storeMutex = &sync.Mutex{}
 
 	// Colly collector
 	c := colly.NewCollector(
 		colly.AllowURLRevisit(),
-		colly.MaxDepth(2), // We need to go one level deeper to follow redirects
+		colly.MaxDepth(2),       // We need to go one level deeper to follow redirects
+		colly.Async(true),       // Enable async for parallel scraping
 	)
 	
-	// Set the User-Agent to mimic a real browser
+	// Limit the number of threads to 2 and add a random delay
+	c.Limit(&colly.LimitRule{DomainGlob: "*", Parallelism: 2})
+
+	// Set the custom transport to use FlareSolverr
+	c.WithTransport(&FlareSolverrTransport{})
+
+	// Set a real User-Agent, though FlareSolverr will likely use its own
 	c.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36"
 
 	// triggered when the scraper encounters an error
 	c.OnError(func(r *colly.Response, err error) {
 		fmt.Printf("Something went wrong on %s: %v\n", r.Request.URL.String(), err)
 	})
-	
-	// ... (rest of the code will be modified in subsequent steps)
 
 	c.OnHTML(".link", func(e *colly.HTMLElement) {
 		if count >= maxLinks {
@@ -145,6 +176,7 @@ func Scrape() {
 		// Make the redirection URL absolute
 		absoluteRedirectionUrl := e.Request.AbsoluteURL(redirectionUrl)
 
+		storeMutex.Lock()
 		// Store the link in tempLinkStore, keyed by its absolute redirection URL
 		tempLinkStore[absoluteRedirectionUrl] = link
 
@@ -153,6 +185,7 @@ func Scrape() {
 			linkMap[currentDate] = append(linkMap[currentDate], link)
 		}
 		count++
+		storeMutex.Unlock()
 
 		// Visit the redirection URL to get the final content URL
 		e.Request.Visit(absoluteRedirectionUrl)
@@ -162,28 +195,36 @@ func Scrape() {
 	c.OnHTML("html", func(e *colly.HTMLElement) {
 		requestURL := e.Request.URL.String()
 
+		storeMutex.Lock()
 		// Only process if this URL is one we are tracking in tempLinkStore
-		if link, exists := tempLinkStore[requestURL]; exists {
+		link, exists := tempLinkStore[requestURL]
+		storeMutex.Unlock()
+
+		if exists {
 			// Look for an iframe containing the content
 			e.ForEach("iframe", func(_ int, el *colly.HTMLElement) {
 				src := el.Attr("src")
-				if src != "" && link.Src == "" { // Only set if not already set by a previous iframe
+				if src != "" && link.Src == "" { // Only set if not already set
+					storeMutex.Lock()
 					link.Src = src
-					// Refine type based on src content if needed
+					// Refine type based on src content
 					if strings.Contains(src, "youtube.com/embed/") || strings.Contains(src, "youtube.com/watch?v=") {
 						link.Type = "youtube"
 					} else if strings.Contains(src, "player.vimeo.com/video/") {
 						link.Type = "video"
 					} else {
-						link.Type = "iframe" // Default to iframe type if found
+						link.Type = "iframe"
 					}
+					storeMutex.Unlock()
 				}
 			})
 
 			// Look for scripts that might contain video IDs or redirect URLs
 			e.ForEach("script", func(_ int, el *colly.HTMLElement) {
 				scriptText := el.Text
-				if link.Src == "" { // Only process if src is not already found by an iframe
+				
+				storeMutex.Lock()
+				if link.Src == "" { // Only process if src is not already found
 					if strings.Contains(scriptText, "videoId") {
 						parts := strings.Split(scriptText, "videoId: '")
 						if len(parts) > 1 {
@@ -227,27 +268,32 @@ func Scrape() {
 						}
 					}
 				}
+				storeMutex.Unlock()
 			})
 		}
 	})
 
 	// This handler is for initializing the map for a new date.
 	c.OnHTML(".comment-date", func(e *colly.HTMLElement) {
+		storeMutex.Lock()
 		currentDate = e.Text
 		if _, exists := linkMap[currentDate]; !exists {
 			linkMap[currentDate] = []*Link{}
 		}
+		storeMutex.Unlock()
 	})
 
 	// triggered once scraping is done
 	c.OnScraped(func(r *colly.Response) {
 		// Filter out empty date arrays
 		filteredLinkMap := make(map[string][]*Link)
+		storeMutex.Lock()
 		for date, links := range linkMap {
 			if len(links) > 0 {
 				filteredLinkMap[date] = links
 			}
 		}
+		storeMutex.Unlock()
 
 		keys := make([]string, 0, len(filteredLinkMap))
 		for date := range filteredLinkMap {
@@ -279,57 +325,52 @@ func Scrape() {
 	})
 
 	c.Visit("https://existenz.se/")
+	c.Wait() // Wait for all async scraping to complete
 }
 
 func UpdateCommentNumbers() {
-	data, _ := os.ReadFile("links.json")
+	data, err := os.ReadFile("links.json")
+	if err != nil {
+		log.Printf("Failed to read links.json for comment update: %v", err)
+		return
+	}
 
 	var entries []struct {
 		Date  string  `json:"date"`
 		Links []*Link `json:"links"`
 	}
 
-	json.Unmarshal(data, &entries)
-
-	htmlContent, err := getSiteHTML()
-	if err != nil {
-		log.Printf("Failed to get site HTML for comments: %v", err)
+	if err := json.Unmarshal(data, &entries); err != nil {
+		log.Printf("Failed to unmarshal links.json for comment update: %v", err)
 		return
 	}
-
-	tmpFile, err := os.Create("tmp/comments.html")
-	if err != nil {
-		log.Printf("Failed to create temporary comments file: %v", err)
-		return
-	}
-	defer os.Remove(tmpFile.Name())
-
-	_, err = tmpFile.WriteString(htmlContent)
-	if err != nil {
-		log.Printf("Failed to write to temporary comments file: %v", err)
-		return
-	}
-	tmpFile.Close()
-
 
 	commentMap := make(map[string]string)
+	var mapMutex = &sync.Mutex{}
 
-	t := &http.Transport{}
-	t.RegisterProtocol("file", http.NewFileTransport(http.Dir("/app")))
-	c := colly.NewCollector()
-	c.WithTransport(t)
+	c := colly.NewCollector(colly.Async(true))
+	c.Limit(&colly.LimitRule{DomainGlob: "*", Parallelism: 2})
+	c.WithTransport(&FlareSolverrTransport{}) // Use FlareSolverr for comment updates too
 
-
+	c.OnError(func(r *colly.Response, err error) {
+		fmt.Printf("Error during comment update scrape on %s: %v\n", r.Request.URL.String(), err)
+	})
+	
 	c.OnHTML(".link", func(e *colly.HTMLElement) {
 		commentNumber := e.ChildText(".comment-info a")
 		commentUrl := e.ChildAttr(".comment-info a", "href")
+		mapMutex.Lock()
 		commentMap[commentUrl] = commentNumber
+		mapMutex.Unlock()
 	})
 
-	c.Visit("file:///tmp/comments.html")
+	// Visit the main page to get the latest comment numbers
+	c.Visit("https://existenz.se/")
 
 	c.Wait()
 	fmt.Println("Updating comment numbers...")
+	
+	mapMutex.Lock()
 	for _, entry := range entries {
 		for _, link := range entry.Links {
 			if number, exists := commentMap[link.CommentUrl]; exists {
@@ -337,11 +378,18 @@ func UpdateCommentNumbers() {
 			}
 		}
 	}
+	mapMutex.Unlock()
 
-	file, _ := os.Create("links.json")
+	file, err := os.Create("links.json")
+	if err != nil {
+		log.Printf("Failed to create links.json for comment update: %v", err)
+		return
+	}
 	defer file.Close()
 
 	encoder := json.NewEncoder(file)
 	encoder.SetIndent("", "  ")
-	encoder.Encode(entries)
+	if err := encoder.Encode(entries); err != nil {
+		log.Printf("Failed to write updated JSON data to file: %v", err)
+	}
 }
