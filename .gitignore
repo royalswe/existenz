@@ -1,3 +1,5 @@
 .DS_Store
 main
-build-errors.log
+build-errors.logold/
+tmp/
+links-old.json
