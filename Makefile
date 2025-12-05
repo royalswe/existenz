@@ -8,7 +8,7 @@ all: build test
 
 build:
 	@echo "Building..."
-	@go build -o main server/*.go
+	@go build -o main *.go
 
 # Run the application
 run:
