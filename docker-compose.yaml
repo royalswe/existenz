@@ -10,6 +10,7 @@ services:
     environment:
       - CHROME_BIN=/usr/bin/chromium-browser
       - CHROME_PATH=/usr/lib/chromium/
+      - USE_FLARESOLVERR=true
     depends_on:
       flaresolverr:
         condition: service_healthy

@@ -3,47 +3,92 @@
     "date": "Idag",
     "links": [
       {
-        "title": "The Private Chef For Korea's #1 Gaming Team",
+        "title": "Mats äter halvfabrikat, dreglar och är rosenrasande på Greta, sossar, polisen, Coop etc",
         "icon": "Film",
-        "type": "youtube",
-        "src": "D2l2MsTAvLo",
-        "comment_url": "?p=komment\u0026id=267708",
+        "type": "video",
+        "src": "",
+        "comment_url": "?p=komment\u0026id=276321",
+        "comment_number": "7",
+        "nsfw": false
+      },
+      {
+        "title": "Natthumor!",
+        "icon": "Bild",
+        "type": "image",
+        "src": "",
+        "comment_url": "?p=komment\u0026id=276319",
         "comment_number": "0",
         "nsfw": false
       },
       {
-        "title": "Ni män kanske inte är ensamma i era tankar?",
-        "icon": "Film",
-        "type": "youtube",
-        "src": "740EcJLzsY8",
-        "comment_url": "?p=komment\u0026id=267707",
-        "comment_number": "0",
-        "nsfw": false
-      },
-      {
-        "title": "Kille förklarar inflationen de fem senaste åren",
-        "icon": "Film",
-        "type": "redirect",
-        "src": "https://youtube.com/shorts/HdXPScgs7ck?si=uHS70HzSG52NukGW",
-        "comment_url": "?p=komment\u0026id=267706",
-        "comment_number": "0",
-        "nsfw": false
-      },
-      {
-        "title": "Ryska Sankt Petersburg attackerat",
+        "title": "Putins misstag i Östersjön",
         "icon": "Film",
         "type": "iframe",
-        "src": "https://www.itemfix.com/v?t=am0t0f",
-        "comment_url": "?p=komment\u0026id=267704",
-        "comment_number": "1",
+        "src": "https://funfunfun.se/2025/12/107275_Putins_misstag_i_stersjn.woff?play=1",
+        "comment_url": "?p=komment\u0026id=276318",
+        "comment_number": "0",
         "nsfw": false
       },
       {
-        "title": "Fallet Hammarskjöld @ SVT Play",
-        "icon": "Hemsida",
-        "type": "redirect",
-        "src": "https://www.svtplay.se/video/KPvBZgX/fallet-hammarskjold/avsnitt-1",
-        "comment_url": "?p=komment\u0026id=267703",
+        "title": "This Joke Hit Andrew Santino Hard",
+        "icon": "Film",
+        "type": "iframe",
+        "src": "https://funfunfun.se/2025/12/107278_This_Joke_Hit_Andrew_Santino_Hard.woff?play=1",
+        "comment_url": "?p=komment\u0026id=276316",
+        "comment_number": "0",
+        "nsfw": false
+      },
+      {
+        "title": "Mat: Finsmakaren besöker den bästa enstjärniga restaurangen",
+        "icon": "Film",
+        "type": "iframe",
+        "src": "https://funfunfun.se/2025/12/107283_Mat_Finsmakaren_besker_den_bsta_enstjrniga_restaurangen.woff?play=1",
+        "comment_url": "?p=komment\u0026id=276315",
+        "comment_number": "0",
+        "nsfw": false
+      },
+      {
+        "title": "Bodycam från händelse som ledde till att väktare åtalas för mordförsök",
+        "icon": "Film",
+        "type": "iframe",
+        "src": "https://funfunfun.se/2025/12/107276_Bodycam_frn_hndelse_som_ledde_till_att_vktare_talas_fr_mordfrsk.woff?play=1",
+        "comment_url": "?p=komment\u0026id=276314",
+        "comment_number": "0",
+        "nsfw": false
+      },
+      {
+        "title": "Gaming: 10 kommande FPS-titlar",
+        "icon": "Film",
+        "type": "iframe",
+        "src": "https://funfunfun.se/2025/12/107274_Gaming_10_kommande_FPS-titlar.woff?play=1",
+        "comment_url": "?p=komment\u0026id=276313",
+        "comment_number": "0",
+        "nsfw": false
+      },
+      {
+        "title": "Ryska krigsfångar i dialog med en ukrainsk general",
+        "icon": "Film",
+        "type": "iframe",
+        "src": "https://funfunfun.se/2025/12/107277_Ryska_krigsfngar_i_dialog_med_en_ukrainsk_general.woff?play=1",
+        "comment_url": "?p=komment\u0026id=276312",
+        "comment_number": "0",
+        "nsfw": false
+      },
+      {
+        "title": "Gaming: Hell Let Loose - Den nya kartan Smolensk",
+        "icon": "Film",
+        "type": "iframe",
+        "src": "https://funfunfun.se/2025/12/107284_Gaming_Hell_Let_Loose_-_Den_nya_kartan_Smolensk.woff?play=1",
+        "comment_url": "?p=komment\u0026id=276311",
+        "comment_number": "0",
+        "nsfw": false
+      },
+      {
+        "title": "Gaming: CS2 - Det bästa från Starladder MAJORN hittills",
+        "icon": "Film",
+        "type": "iframe",
+        "src": "https://funfunfun.se/2025/12/107282_Gaming_CS2_-_Det_bsta_frn_Starladder_MAJORN_hittills.woff?play=1",
+        "comment_url": "?p=komment\u0026id=276310",
         "comment_number": "0",
         "nsfw": false
       }

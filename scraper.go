@@ -55,7 +55,9 @@ type FlareSolverrSolution struct {
 }
 
 // FlareSolverrTransport implements http.RoundTripper to proxy requests through FlareSolverr
-type FlareSolverrTransport struct{}
+type FlareSolverrTransport struct {
+	flaresolverrURL string
+}
 
 var cookies = []*http.Cookie{
 	{
@@ -66,24 +68,22 @@ var cookies = []*http.Cookie{
 }
 
 func (t *FlareSolverrTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	fmt.Printf("FlareSolverr: attempting to proxy request for %s\n", req.URL.String())
-
 	// 1. Create FlareSolverr request payload
-	var fsCookies []FlareSolverrCookie
-	for _, c := range cookies {
-		fsCookies = append(fsCookies, FlareSolverrCookie{
-			Name:   c.Name,
-			Value:  c.Value,
-			Domain: c.Domain,
-		})
-	}
-
 	fsReq := FlareSolverrRequest{
 		Cmd:        "request." + strings.ToLower(req.Method),
 		URL:        req.URL.String(),
 		MaxTimeout: 60000,
-		Cookies:    fsCookies,
 	}
+
+	var fsCookies []FlareSolverrCookie
+	for _, cookie := range cookies {
+		fsCookies = append(fsCookies, FlareSolverrCookie{
+			Name:   cookie.Name,
+			Value:  cookie.Value,
+			Domain: cookie.Domain,
+		})
+	}
+	fsReq.Cookies = fsCookies
 
 	jsonData, err := json.Marshal(fsReq)
 	if err != nil {
@@ -91,7 +91,7 @@ func (t *FlareSolverrTransport) RoundTrip(req *http.Request) (*http.Response, er
 	}
 
 	// 2. Send request to FlareSolverr
-	fsResp, err := http.Post("http://flaresolverr:8191/v1", "application/json", bytes.NewBuffer(jsonData))
+	fsResp, err := http.Post(t.flaresolverrURL, "application/json", bytes.NewBuffer(jsonData))
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request to flaresolverr: %w", err)
 	}
@@ -131,11 +131,11 @@ func (t *FlareSolverrTransport) RoundTrip(req *http.Request) (*http.Response, er
 	return resp, nil
 }
 
-func Scrape() {
+func Scrape(useFlareSolverr bool) {
 	// initialize the map that will contain the scraped data
 	linkMap := make(map[string][]*Link)
 	var currentDate string = "Idag"
-	maxLinks := 15
+	maxLinks := 10
 	count := 0
 
 	// Temporary store for links that need their redirect URLs followed
@@ -152,8 +152,14 @@ func Scrape() {
 	// Limit the number of threads to 2 and add a random delay
 	c.Limit(&colly.LimitRule{DomainGlob: "*", Parallelism: 2})
 
-	// Set the custom transport to use FlareSolverr
-	c.WithTransport(&FlareSolverrTransport{})
+	if useFlareSolverr {
+		fmt.Println("Using FlareSolverr for scraping")
+		flaresolverrURL := os.Getenv("FLARESOLVERR_URL")
+		if flaresolverrURL == "" {
+			flaresolverrURL = "http://flaresolverr:8191/v1"
+		}
+		c.WithTransport(&FlareSolverrTransport{flaresolverrURL: flaresolverrURL})
+	}
 
 	// Set a real User-Agent, though FlareSolverr will likely use its own
 	c.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36"
@@ -193,7 +199,7 @@ func Scrape() {
 		}
 
 		// Get the redirection URL from the <a> tag inside the .link div
-		redirectionUrl := e.ChildAttr(`a[target="_blank"]`, "href")
+		redirectionUrl := e.ChildAttr("a", "href")
 		if redirectionUrl == "" {
 			return // Skip if no redirection URL found
 		}
@@ -226,35 +232,19 @@ func Scrape() {
 		storeMutex.Unlock()
 
 		if exists {
-			var urlsToVisit []string
-
 			// Look for an iframe containing the content
 			e.ForEach("iframe", func(_ int, el *colly.HTMLElement) {
 				src := el.Attr("src")
-				if src == "" {
-					return
-				}
-				absoluteSrc := e.Request.AbsoluteURL(src)
-
-				if strings.Contains(absoluteSrc, "funfunfun.se") {
+				if src != "" && link.Src == "" { // Only set if not already set
 					storeMutex.Lock()
-					if _, found := tempLinkStore[absoluteSrc]; !found {
-						tempLinkStore[absoluteSrc] = link
-						urlsToVisit = append(urlsToVisit, absoluteSrc)
-					}
-					storeMutex.Unlock()
-				} else {
-					storeMutex.Lock()
-					if link.Src == "" { // Only set if not already set
-						link.Src = absoluteSrc
-						// Refine type based on src content
-						if strings.Contains(absoluteSrc, "youtube.com/embed/") || strings.Contains(absoluteSrc, "youtube.com/watch?v=") {
-							link.Type = "youtube"
-						} else if strings.Contains(absoluteSrc, "player.vimeo.com/video/") {
-							link.Type = "video"
-						} else {
-							link.Type = "iframe"
-						}
+					link.Src = src
+					// Refine type based on src content
+					if strings.Contains(src, "youtube.com/embed/") || strings.Contains(src, "youtube.com/watch?v=") {
+						link.Type = "youtube"
+					} else if strings.Contains(src, "player.vimeo.com/video/") {
+						link.Type = "video"
+					} else {
+						link.Type = "iframe"
 					}
 					storeMutex.Unlock()
 				}
@@ -265,31 +255,22 @@ func Scrape() {
 				scriptText := el.Text
 
 				storeMutex.Lock()
-				// Allow script to overwrite a potentially generic iframe src
-				// if link.Src == "" {
-				if strings.Contains(scriptText, "videoId") {
-					parts := strings.Split(scriptText, "videoId: '")
-					if len(parts) > 1 {
-						videoIDParts := strings.Split(parts[1], "',")
-						if len(videoIDParts) > 0 {
-							link.Type = "youtube"
-							link.Src = videoIDParts[0]
+				if link.Src == "" { // Only process if src is not already found
+					if strings.Contains(scriptText, "videoId") {
+						parts := strings.Split(scriptText, "videoId: '")
+						if len(parts) > 1 {
+							videoIDParts := strings.Split(parts[1], "',")
+							if len(videoIDParts) > 0 {
+								link.Type = "youtube"
+								link.Src = videoIDParts[0]
+							}
 						}
-					}
-				} else if strings.Contains(scriptText, "function countdown()") {
-					parts := strings.Split(scriptText, "top.location.href = '")
-					if len(parts) > 1 {
-						urlParts := strings.Split(parts[1], "'")
-						if len(urlParts) > 0 {
-							newSrc := urlParts[0] // Keep it relative for the weird image URL parsing
-							if strings.Contains(newSrc, "snuskhummer.com") {
-								absoluteSrc := e.Request.AbsoluteURL(newSrc)
-								if _, found := tempLinkStore[absoluteSrc]; !found {
-									tempLinkStore[absoluteSrc] = link
-									urlsToVisit = append(urlsToVisit, absoluteSrc)
-								}
-							} else {
-								link.Src = newSrc
+					} else if strings.Contains(scriptText, "function countdown()") {
+						parts := strings.Split(scriptText, "top.location.href = '")
+						if len(parts) > 1 {
+							urlParts := strings.Split(parts[1], "'")
+							if len(urlParts) > 0 {
+								link.Src = urlParts[0]
 								link.Type = "redirect"
 								if strings.Contains(link.Src, "https://existenz.se/amedia/?typ=bild&url=") {
 									urlParts2 := strings.Split(link.Src, "https")
@@ -300,32 +281,26 @@ func Scrape() {
 								}
 							}
 						}
-					}
-				} else if strings.Contains(scriptText, "top.location") {
-					parts := strings.Split(scriptText, "top.location = '")
-					if len(parts) > 1 {
-						urlParts := strings.Split(parts[1], "'")
-						if len(urlParts) > 0 {
-							link.Src = urlParts[0]
-							link.Type = "redirect"
-							if strings.Contains(link.Src, "https://www.youtube.com/shorts/") {
-								urlParts2 := strings.Split(link.Src, "https://www.youtube.com/shorts/")
-								if len(urlParts2) > 1 {
-									link.Src = urlParts2[1]
-									link.Type = "youtube"
+					} else if strings.Contains(scriptText, "top.location") {
+						parts := strings.Split(scriptText, "top.location = '")
+						if len(parts) > 1 {
+							urlParts := strings.Split(parts[1], "'")
+							if len(urlParts) > 0 {
+								link.Src = urlParts[0]
+								link.Type = "redirect"
+								if strings.Contains(link.Src, "https://www.youtube.com/shorts/") {
+									urlParts2 := strings.Split(link.Src, "https://www.youtube.com/shorts/")
+									if len(urlParts2) > 1 {
+										link.Src = urlParts2[1]
+										link.Type = "youtube"
+									}
 								}
 							}
 						}
 					}
 				}
-				// }
 				storeMutex.Unlock()
 			})
-
-			// Visit all collected URLs
-			for _, url := range urlsToVisit {
-				e.Request.Visit(url)
-			}
 		}
 	})
 
@@ -384,7 +359,7 @@ func Scrape() {
 	c.Wait() // Wait for all async scraping to complete
 }
 
-func UpdateCommentNumbers() {
+func UpdateCommentNumbers(useFlareSolverr bool) {
 	data, err := os.ReadFile("links.json")
 	if err != nil {
 		log.Printf("Failed to read links.json for comment update: %v", err)
@@ -406,7 +381,15 @@ func UpdateCommentNumbers() {
 
 	c := colly.NewCollector(colly.Async(true))
 	c.Limit(&colly.LimitRule{DomainGlob: "*", Parallelism: 2})
-	c.WithTransport(&FlareSolverrTransport{}) // Use FlareSolverr for comment updates too
+
+	if useFlareSolverr {
+		fmt.Println("Using FlareSolverr for comment updates")
+		flaresolverrURL := os.Getenv("FLARESOLVERR_URL")
+		if flaresolverrURL == "" {
+			flaresolverrURL = "http://flaresolverr:8191/v1"
+		}
+		c.WithTransport(&FlareSolverrTransport{flaresolverrURL: flaresolverrURL})
+	}
 
 	c.OnError(func(r *colly.Response, err error) {
 		fmt.Printf("Error during comment update scrape on %s: %v\n", r.Request.URL.String(), err)

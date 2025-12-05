@@ -4,15 +4,17 @@ import (
 	"encoding/json"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 )
 
 func main() {
-	// run the scraper every day at 00:10
+	useFlareSolverr, _ := strconv.ParseBool(os.Getenv("USE_FLARESOLVERR"))
 
+	// Run scraper on startup, then every 24 hours
 	go func() {
 		for {
-			Scrape()
+			Scrape(useFlareSolverr)
 			now := time.Now()
 			next := now.Add(time.Hour * 24)
 			next = time.Date(next.Year(), next.Month(), next.Day(), 0, 10, 0, 0, next.Location())
@@ -21,12 +23,12 @@ func main() {
 	}()
 
 	// update comment numbers every 10 minute
-	// go func() {
-	// 	for {
-	// 		UpdateCommentNumbers()
-	// 		time.Sleep(10 * time.Minute)
-	// 	}
-	// }()
+	go func() {
+		for {
+			UpdateCommentNumbers(useFlareSolverr)
+			time.Sleep(10 * time.Minute)
+		}
+	}()
 
 	http.HandleFunc("GET /links", func(w http.ResponseWriter, r *http.Request) {
 		// Set CORS headers
