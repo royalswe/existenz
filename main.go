@@ -23,12 +23,12 @@ func main() {
 	}()
 
 	// update comment numbers every 10 minute
-	go func() {
-		for {
-			UpdateCommentNumbers(useFlareSolverr)
-			time.Sleep(10 * time.Minute)
-		}
-	}()
+	// go func() {
+	// 	for {
+	// 		UpdateCommentNumbers(useFlareSolverr)
+	// 		time.Sleep(10 * time.Minute)
+	// 	}
+	// }()
 
 	http.HandleFunc("GET /links", func(w http.ResponseWriter, r *http.Request) {
 		// Set CORS headers

@@ -135,7 +135,7 @@ func Scrape(useFlareSolverr bool) {
 	// initialize the map that will contain the scraped data
 	linkMap := make(map[string][]*Link)
 	var currentDate string = "Idag"
-	maxLinks := 10
+	maxLinks := 20
 	count := 0
 
 	// Temporary store for links that need their redirect URLs followed
@@ -164,6 +164,9 @@ func Scrape(useFlareSolverr bool) {
 	// Set a real User-Agent, though FlareSolverr will likely use its own
 	c.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36"
 
+	c.OnRequest(func(r *colly.Request) {
+		c.SetCookies("https://existenz.se", cookies)
+	})
 	// triggered when the scraper encounters an error
 	c.OnError(func(r *colly.Response, err error) {
 		fmt.Printf("Something went wrong on %s: %v\n", r.Request.URL.String(), err)
