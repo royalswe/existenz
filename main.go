@@ -4,28 +4,26 @@ import (
 	"encoding/json"
 	"net/http"
 	"os"
-	"strconv"
-	"time"
 )
 
 func main() {
-	useFlareSolverr, _ := strconv.ParseBool(os.Getenv("USE_FLARESOLVERR"))
+	Scrape()
 
-	// Run scraper on startup, then every 24 hours
-	go func() {
-		for {
-			Scrape(useFlareSolverr)
-			now := time.Now()
-			next := now.Add(time.Hour * 24)
-			next = time.Date(next.Year(), next.Month(), next.Day(), 0, 10, 0, 0, next.Location())
-			time.Sleep(time.Until(next))
-		}
-	}()
+	// run the scraper every day at 00:10
+	// go func() {
+	// 	for {
+	// 		Scrape()
+	// 		now := time.Now()
+	// 		next := now.Add(time.Hour * 24)
+	// 		next = time.Date(next.Year(), next.Month(), next.Day(), 0, 10, 0, 0, next.Location())
+	// 		time.Sleep(time.Until(next))
+	// 	}
+	// }()
 
 	// update comment numbers every 10 minute
 	// go func() {
 	// 	for {
-	// 		UpdateCommentNumbers(useFlareSolverr)
+	// 		UpdateCommentNumbers()
 	// 		time.Sleep(10 * time.Minute)
 	// 	}
 	// }()
